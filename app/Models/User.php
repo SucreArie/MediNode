@@ -23,7 +23,12 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'etablisement',
+        'etablissement',
+        'role',
+        'age',
+        'telephone',
+        'condition',
+        'status',
     ];
 
     /**
@@ -47,5 +52,20 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * Check if the user has the given role (or one of roles).
+     *
+     * @param  string|array  $role
+     * @return bool
+     */
+    public function hasRole(string|array $role): bool
+    {
+        if (is_array($role)) {
+            return in_array($this->role, $role, true);
+        }
+
+        return $this->role === $role;
     }
 }

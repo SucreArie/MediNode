@@ -18,9 +18,14 @@ return Application::configure(basePath: dirname(__DIR__))
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
         ]);
 
-        // Web middleware (si tu utilises Inertia plus tard)
+        // Web middleware
         $middleware->web(append: [
             \App\Http\Middleware\HandleInertiaRequests::class,
+        ]);
+
+        // Alias middleware pour les rôles RBAC léger
+        $middleware->alias([
+            'role' => \App\Http\Middleware\CheckRole::class,
         ]);
 
     })

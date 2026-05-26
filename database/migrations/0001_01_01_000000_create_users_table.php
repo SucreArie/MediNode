@@ -22,6 +22,7 @@ return new class extends Migration
             $table->string('etablissement')->nullable();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            $table->unsignedBigInteger('centre_medical_id')->nullable();
             $table->rememberToken();
             $table->timestamps();
         });

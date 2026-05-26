@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Consultations; // Correction : Utilise le nom singulier du Model
+use App\Models\Consultations; // Vérifiez si votre fichier est Consultation.php
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -16,7 +16,7 @@ class ConsultationsController extends Controller
     public function index()
     {
         $consultations = Consultations::with(['patient', 'medecin', 'centreMedical'])->get();
-        
+
         return response()->json($consultations);
     }
 

@@ -17,6 +17,7 @@ class AuthController extends Controller
             'email' => 'required|email|unique:users',
             'password' => 'required|min:6',
             'etablissement' => 'nullable|string|max:255',
+            'centre_medical_id' => 'nullable|exists:centre_medicauxes,id',
             'age' => 'nullable|string|max:10',
             'telephone' => 'nullable|string|max:20',
             'condition' => 'nullable|string|max:255',
@@ -28,6 +29,7 @@ class AuthController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'etablissement' => $request->etablissement ?? null,
+            'centre_medical_id' => $request->centre_medical_id,
             'role' => 'patient',
             'age' => $request->age,
             'telephone' => $request->telephone,
@@ -79,7 +81,7 @@ class AuthController extends Controller
 
     public function profile(Request $request)
     {
-        return response()->json($request->user());
+        return response()->json($request->user()->load('centreMedical'));
     }
 
     public function update(Request $request)
@@ -96,13 +98,14 @@ class AuthController extends Controller
             ],
             'password' => 'sometimes|nullable|min:6',
             'etablissement' => 'nullable|string|max:255',
+            'centre_medical_id' => 'nullable|exists:centre_medicauxes,id',
             'age' => 'nullable|string|max:10',
             'telephone' => 'nullable|string|max:20',
             'condition' => 'nullable|string|max:255',
             'status' => 'nullable|string|max:255',
         ]);
 
-        $data = $request->only(['name', 'email', 'etablissement', 'age', 'telephone', 'condition', 'status']);
+        $data = $request->only(['name', 'email', 'etablissement', 'centre_medical_id', 'age', 'telephone', 'condition', 'status']);
 
         if ($request->filled('password')) {
             $data['password'] = Hash::make($request->password);
@@ -120,12 +123,48 @@ class AuthController extends Controller
     public function index(Request $request)
     {
         $query = User::query();
-        
+
         if ($request->has('role')) {
             $query->where('role', $request->role);
         }
 
-        return response()->json($query->get());
+        return response()->json($query->with('centreMedical')->get());
+    }
+
+    public function nonPatients()
+    {
+        return response()->json(
+            User::where('role', '!=', 'patient')
+                ->with('centreMedical')
+                ->get()
+        );
+    }
+
+    public function doctors()
+    {
+        return response()->json(
+            User::where('role', 'doctor')
+                ->with('centreMedical')
+                ->get()
+        );
+    }
+
+    public function admins()
+    {
+        return response()->json(
+            User::where('role', 'admin')
+                ->with('centreMedical')
+                ->get()
+        );
+    }
+
+    public function receptionists()
+    {
+        return response()->json(
+            User::where('role', 'receptionist')
+                ->with('centreMedical')
+                ->get()
+        );
     }
 
     // Ajout d'un utilisateur par un administrateur
@@ -137,6 +176,7 @@ class AuthController extends Controller
             'password' => 'required|min:6',
             'role' => 'required|in:admin,doctor,receptionist,patient',
             'etablissement' => 'nullable|string|max:255',
+            'centre_medical_id' => 'nullable|integer|exists:centre_medicauxes,id',
             'age' => 'nullable|string|max:10',
             'telephone' => 'nullable|string|max:20',
             'condition' => 'nullable|string|max:255',
@@ -149,6 +189,7 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),
             'role' => $request->role,
             'etablissement' => $request->etablissement,
+            'centre_medical_id' => $request->centre_medical_id,
             'age' => $request->age,
             'telephone' => $request->telephone,
             'condition' => $request->condition,
@@ -161,7 +202,7 @@ class AuthController extends Controller
     // Détails d'un utilisateur spécifique
     public function show(User $user)
     {
-        return response()->json($user);
+        return response()->json($user->load('centreMedical'));
     }
 
     // Modification d'un utilisateur spécifique par un administrateur
@@ -178,13 +219,14 @@ class AuthController extends Controller
             'password' => 'sometimes|nullable|min:6',
             'role' => 'sometimes|required|in:admin,doctor,receptionist,patient',
             'etablissement' => 'nullable|string|max:255',
+            'centre_medical_id' => 'nullable|exists:centre_medicauxes,id',
             'age' => 'nullable|string|max:10',
             'telephone' => 'nullable|string|max:20',
             'condition' => 'nullable|string|max:255',
             'status' => 'nullable|string|max:255',
         ]);
 
-        $data = $request->only(['name', 'email', 'role', 'etablissement', 'age', 'telephone', 'condition', 'status']);
+        $data = $request->only(['name', 'email', 'role', 'etablissement', 'centre_medical_id', 'age', 'telephone', 'condition', 'status']);
 
         if ($request->filled('password')) {
             $data['password'] = Hash::make($request->password);

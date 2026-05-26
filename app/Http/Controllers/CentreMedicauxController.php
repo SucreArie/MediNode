@@ -6,6 +6,7 @@ use App\Models\Centre_medicaux;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
+
 class CentreMedicauxController extends Controller
 {
     /**
@@ -13,12 +14,32 @@ class CentreMedicauxController extends Controller
      */
     public function index()
     {
-        $centres = Centre_medicaux::all();
-        return response()->json([
-            'success' => true,
-            'data' => $centres
-        ]);
+        try {
+            // Récupération des centres avec les statistiques calculées par SQL
+            $centres = Centre_medicaux::withCount([
+                'dossiers',
+                'consultations',
+                'users as patients_count' => function ($query) {
+                    $query->where('role', 'patient');
+                },
+                'users as doctors_count' => function ($query) {
+                    $query->where('role', 'doctor');
+                }
+            ])->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => $centres
+            ]);
+        } catch (\Exception $e) {
+            // En cas d'erreur, on renvoie le message pour debugger
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
+
 
     /**
      * Ajout d'un centre médical

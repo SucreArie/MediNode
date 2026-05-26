@@ -19,6 +19,7 @@ class Dossier extends Model
         'examen_id',
         'prescription_id',
         'consultation_id',
+        'centre_medical_id',
     ];
     public function patient()
     {
@@ -40,4 +41,8 @@ class Dossier extends Model
     {
         return $this->belongsTo(Consultations::class, 'consultation_id');
     }
+    public function centreMedical()
+{
+    return $this->belongsTo(Centre_medicaux::class, 'centre_medical_id');
+}
 }

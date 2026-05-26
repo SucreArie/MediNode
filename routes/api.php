@@ -6,6 +6,7 @@ use App\Http\Controllers\ConsultationsController;
 use App\Http\Controllers\PrescriptionsController;
 use App\Http\Controllers\ExamensController;
 use App\Http\Controllers\DossierController;
+use App\Http\Controllers\SyncLogsController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -28,6 +29,17 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/centres-medicaux/{centre_medicaux}', [CentreMedicauxController::class, 'update']);
         Route::delete('/centres-medicaux/{centre_medicaux}', [CentreMedicauxController::class, 'destroy']);
 
+        // Routes de synchronisation
+        Route::get('/sync/dashboard', [SyncLogsController::class, 'getSyncDashboard']);
+        Route::apiResource('sync-logs', SyncLogsController::class)->only(['index']);
+    });
+
+    Route::middleware(['role:admin'])->group(function () {
+        Route::get('/users', [AuthController::class, 'index']);
+        Route::get('/users/non-patients', [AuthController::class, 'nonPatients']);
+        Route::get('/users/medecins', [AuthController::class, 'doctors']);
+        Route::get('/users/admins', [AuthController::class, 'admins']);
+        Route::get('/users/receptionists', [AuthController::class, 'receptionists']);
     });
 
     // Consultations, Prescriptions, Examens - Admin, Doctor, Receptionist
@@ -44,6 +56,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/centres-medicaux', [ConsultationsController::class, 'getCentresMedicaux']);
         Route::apiResource('prescriptions', PrescriptionsController::class)->only(['index', 'store']);
         Route::apiResource('examens', ExamensController::class)->only(['index', 'store']);
+        Route::get('/notifications/latest', [DossierController::class, 'getRecentActivity']);
         Route::apiResource('dossiers', DossierController::class);
     });
 
@@ -66,5 +79,5 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/my-records', function (\Illuminate\Http\Request $request) { return response()->json(['message' => 'Mes dossiers', 'user' => $request->user()]); });
     });
 
-    
+
 });

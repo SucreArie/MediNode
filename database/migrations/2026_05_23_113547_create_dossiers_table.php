@@ -21,6 +21,7 @@ return new class extends Migration
             $table->foreignId('examen_id')->constrained('examens')->onDelete('cascade');
             $table->foreignId('prescription_id')->constrained('prescriptions')->onDelete('cascade');
              $table->foreignId('consultation_id')->constrained('consultations')->onDelete('cascade');
+                $table->foreignId('centre_medical_id')->constrained('centre_medicauxes')->onDelete('cascade');
              $table->softDeletes();
             $table->timestamps();
         });

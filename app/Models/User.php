@@ -29,6 +29,8 @@ class User extends Authenticatable
         'telephone',
         'condition',
         'status',
+        'centre_medical_id',
+        
     ];
 
     /**
@@ -68,4 +70,9 @@ class User extends Authenticatable
 
         return $this->role === $role;
     }
+
+    public function centreMedical()
+{
+    return $this->belongsTo(Centre_medicaux::class, 'centre_medical_id');
+}
 }

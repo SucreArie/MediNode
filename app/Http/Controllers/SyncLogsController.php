@@ -7,6 +7,7 @@ use App\Models\Centre_medicaux;
 use App\Models\Dossier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class SyncLogsController extends Controller
 {
@@ -47,7 +48,7 @@ class SyncLogsController extends Controller
 
         // Calcul des métriques réseau
         $totalRecords = Dossier::count();
-        $syncedRecords = Sync_logs::where('sync_status', 'acknowledged')->count();
+        $syncedDossiersCount = Sync_logs::where('table_name', 'dossiers')->where('sync_status', 'acknowledged')->distinct('record_id')->count();
         $pendingSync = Sync_logs::where('sync_status', 'pending')->count();
 
         return response()->json([
@@ -55,14 +56,55 @@ class SyncLogsController extends Controller
                 'totalNodes' => $centers->count(),
                 'activeNodes' => $centers->count(), // Ici, on considère tous les centres créés comme actifs
                 'totalRecords' => $totalRecords,
-                'syncedRecords' => $syncedRecords,
+                'syncedRecords' => $syncedDossiersCount,
                 'pendingSync' => $pendingSync,
-                'avgLatency' => '34ms',
-                'consistency' => $totalRecords > 0 ? round((($totalRecords - $pendingSync) / $totalRecords) * 100, 2) . '%' : '100%'
+                'avgLatency' => '34ms', // Ceci peut être dynamisé plus tard
+                'consistency' => $totalRecords > 0 ? round(($syncedDossiersCount / $totalRecords) * 100, 2) . '%' : '100%'
             ],
             'history' => $history,
             'centers' => $centers
         ]);
+    }
+
+    /**
+     * Déclenche une synchronisation manuelle et enregistre le log
+     */
+    public function triggerSync(Request $request)
+    {
+        try {
+            // Validation simple de l'entrée
+            $center = Centre_medicaux::findOrFail($request->center_id);
+
+            // Tentative de création du log
+            $log = Sync_logs::create([
+                'node_id'     => $center->nom,
+                'table_name'  => 'system',
+                'record_id'   => 0,
+                'operation'   => 'INSERT',
+                'data'        => json_encode(['action' => 'manual_sync_triggered', 'timestamp' => now()]),
+                'sync_status' => 'acknowledged',
+                'synced_at'   => now(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Synchronisation réussie',
+                'log'     => $log
+            ]);
+
+        } catch (\Exception $e) {
+            // Capturer la vraie erreur dans storage/logs/laravel.log
+            Log::error("Erreur critique lors de la synchronisation : " . $e->getMessage(), [
+                'trace'   => $e->getTraceAsString(),
+                'payload' => $request->all()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur interne du serveur lors de la synchronisation',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**

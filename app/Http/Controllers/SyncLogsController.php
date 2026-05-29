@@ -25,7 +25,20 @@ class SyncLogsController extends Controller
     public function getSyncDashboard()
     {
         // Récupération des centres avec leurs statistiques
-        $centers = Centre_medicaux::withCount(['dossiers', 'users'])->get();
+        $centers = Centre_medicaux::withCount(['dossiers', 'users'])
+            ->get()
+            ->map(function ($center) {
+                // On récupère le dernier log de synchronisation réussi pour ce centre spécifique
+                $lastLog = Sync_logs::where('node_id', $center->nom)
+                    ->whereNotNull('synced_at')
+                    ->latest('synced_at')
+                    ->first();
+
+                // On injecte dynamiquement la date et le statut pour le composant SyncStatusCard
+                $center->synced_at = $lastLog ? $lastLog->synced_at : null;
+                $center->sync_status = $lastLog ? ($lastLog->sync_status === 'acknowledged' ? 'synced' : $lastLog->sync_status) : 'synced';
+                return $center;
+            });
 
         // Récupération des logs récents transformés pour le frontend
         $history = Sync_logs::latest()
@@ -64,6 +77,39 @@ class SyncLogsController extends Controller
             'history' => $history,
             'centers' => $centers
         ]);
+    }
+
+    /**
+     * Récupère l'intégralité du journal d'activité pour l'audit
+     */
+    public function getFullActivityLog()
+    {
+        $logs = Sync_logs::latest()->take(100)->get()->map(function($log) {
+            // Mapping intelligent du type selon la table impactée
+            $type = 'record';
+            if ($log->table_name === 'system') $type = 'sync';
+            if ($log->table_name === 'users') $type = 'access';
+            
+            // Détermination de la sévérité selon le statut de synchro
+            $severity = 'info';
+            if ($log->sync_status === 'failed') $severity = 'error';
+            if ($log->sync_status === 'acknowledged') $severity = 'success';
+            if ($log->sync_status === 'pending') $severity = 'warning';
+
+            return [
+                'id' => $log->id,
+                'type' => $type,
+                'action' => $log->operation . ' ' . strtoupper($log->table_name),
+                'description' => "Transaction sur " . $log->table_name . " (ID:" . $log->record_id . ") provenant de " . $log->node_id,
+                'user' => $log->node_id,
+                'time' => $log->created_at->format('H:i'),
+                'date' => $log->created_at->format('Y-m-d'),
+                'ip' => '127.0.0.1',
+                'severity' => $severity,
+            ];
+        });
+
+        return response()->json($logs);
     }
 
     /**

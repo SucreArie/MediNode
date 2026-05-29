@@ -32,6 +32,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // Routes de synchronisation
         Route::get('/sync/dashboard', [SyncLogsController::class, 'getSyncDashboard']);
         Route::post('/sync/trigger', [SyncLogsController::class, 'triggerSync']);
+        Route::get('/activity-logs/all', [SyncLogsController::class, 'getFullActivityLog']);
         Route::apiResource('sync-logs', SyncLogsController::class)->only(['index']);
     });
 

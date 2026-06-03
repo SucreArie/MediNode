@@ -55,6 +55,13 @@ class DossierController extends Controller
      */
     public function show(Dossier $dossier)
     {
+        $user = auth()->user();
+
+        // Vérification de sécurité : un patient ne peut voir que ses propres dossiers
+        if ($user->role === 'patient' && $dossier->patient_id !== $user->id) {
+            return response()->json(['message' => 'Action non autorisée.'], 403);
+        }
+
         return response()->json($dossier->load(['patient', 'medecin', 'examen', 'prescription', 'consultation', 'centreMedical']));
     }
 
@@ -183,4 +190,31 @@ class DossierController extends Controller
     //         'centers' => $centers
     //     ]);
     // }
+
+    /**
+     * Récupère tout l'historique médical du patient connecté
+     */
+    public function getPatientHistory(Request $request)
+    {
+        $user = $request->user();
+
+        return response()->json([
+            'success' => true,
+            'patient' => $user->load('centreMedical'),
+            'dossiers' => Dossier::where('patient_id', $user->id)
+                ->with(['medecin', 'examen', 'prescription', 'consultation', 'centreMedical'])
+                ->latest()
+                ->get(),
+            'consultations' => \App\Models\Consultations::where('patient_id', $user->id)
+                ->with(['medecin', 'centreMedical'])
+                ->latest()
+                ->get(),
+            'prescriptions' => \App\Models\Prescriptions::whereHas('consultation', function ($query) use ($user) {
+                $query->where('patient_id', $user->id);
+            })->latest()->get(),
+            'examens' => \App\Models\Examens::whereHas('consultation', function ($query) use ($user) {
+                $query->where('patient_id', $user->id);
+            })->latest()->get(),
+        ]);
+    }
 }

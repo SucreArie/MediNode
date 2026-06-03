@@ -44,6 +44,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/users/receptionists', [AuthController::class, 'receptionists']);
     });
 
+    // Route de détails de dossier accessible aussi par le patient
+    Route::get('/dossiers/{dossier}', [DossierController::class, 'show'])->middleware('role:admin,doctor,receptionist,patient');
+
     // Consultations, Prescriptions, Examens - Admin, Doctor, Receptionist
     Route::middleware('role:admin,doctor,receptionist')->group(function () {
         Route::apiResource('consultations', ConsultationsController::class)->only(['index', 'store']);
@@ -59,7 +62,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('prescriptions', PrescriptionsController::class)->only(['index', 'store']);
         Route::apiResource('examens', ExamensController::class)->only(['index', 'store']);
         Route::get('/notifications/latest', [DossierController::class, 'getRecentActivity']);
-        Route::apiResource('dossiers', DossierController::class);
+        Route::apiResource('dossiers', DossierController::class)->except(['show']);
     });
 
     // Doctor routes
@@ -79,6 +82,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:patient')->prefix('patient')->group(function () {
         Route::get('/me', function (\Illuminate\Http\Request $request) { return response()->json(['message' => 'Profil patient', 'user' => $request->user()]); });
         Route::get('/my-records', function (\Illuminate\Http\Request $request) { return response()->json(['message' => 'Mes dossiers', 'user' => $request->user()]); });
+        Route::get('/medical-history', [DossierController::class, 'getPatientHistory']);
     });
 
 

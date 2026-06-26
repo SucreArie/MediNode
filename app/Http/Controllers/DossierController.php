@@ -26,7 +26,7 @@ class DossierController extends Controller
             'name'            => 'required|string|max:255',
             'description'     => 'required|string',
             'date'            => 'required|date',
-            'patient_id'      => 'required|exists:users,id',
+            'patient_id'      => 'required|exists:patients,id',
             'medecin_id'      => 'required|exists:users,id',
             'examen_id'       => 'nullable|exists:examens,id',
             'prescription_id' => 'nullable|exists:prescriptions,id',
@@ -74,7 +74,7 @@ class DossierController extends Controller
             'name'            => 'sometimes|string|max:255',
             'description'     => 'sometimes|string',
             'date'            => 'sometimes|date',
-            'patient_id'      => 'sometimes|exists:users,id',
+            'patient_id'      => 'sometimes|exists:patients,id',
             'medecin_id'      => 'sometimes|exists:users,id',
             'examen_id'       => 'nullable|exists:examens,id',
             'prescription_id' => 'nullable|exists:prescriptions,id',
@@ -194,26 +194,51 @@ class DossierController extends Controller
     /**
      * Récupère tout l'historique médical du patient connecté
      */
+        /**
+     * Récupère tout l'historique médical du patient connecté
+     */
+        /**
+     * Récupère tout l'historique médical du patient connecté
+     */
     public function getPatientHistory(Request $request)
     {
         $user = $request->user();
 
+        // Comme c'est un patient, son id correspond à patient_id
+        $patientId = $user->id;
+
+        // Charger les informations du patient depuis la table Patient
+        $patient = \App\Models\Patient::find($patientId);
+
         return response()->json([
             'success' => true,
-            'patient' => $user->load('centreMedical'),
-            'dossiers' => Dossier::where('patient_id', $user->id)
+            'patient' => $patient ? [
+                'id'        => $patient->id,
+                'firstName' => $patient->firstName,
+                'lastName'  => $patient->lastName,
+                'fullName'  => trim(($patient->firstName ?? '') . ' ' . ($patient->lastName ?? '')),
+            ] : [
+                'id' => $user->id,
+                'fullName' => $user->name ?? 'Patient'
+            ],
+            'total_centers' => \App\Models\Centre_medicaux::count(),
+            
+            'dossiers' => Dossier::where('patient_id', $patientId)
                 ->with(['medecin', 'examen', 'prescription', 'consultation', 'centreMedical'])
                 ->latest()
                 ->get(),
-            'consultations' => \App\Models\Consultations::where('patient_id', $user->id)
+            
+            'consultations' => \App\Models\Consultations::where('patient_id', $patientId)
                 ->with(['medecin', 'centreMedical'])
                 ->latest()
                 ->get(),
-            'prescriptions' => \App\Models\Prescriptions::whereHas('consultation', function ($query) use ($user) {
-                $query->where('patient_id', $user->id);
+            
+            'prescriptions' => \App\Models\Prescriptions::whereHas('consultation', function ($query) use ($patientId) {
+                $query->where('patient_id', $patientId);
             })->latest()->get(),
-            'examens' => \App\Models\Examens::whereHas('consultation', function ($query) use ($user) {
-                $query->where('patient_id', $user->id);
+            
+            'examens' => \App\Models\Examens::whereHas('consultation', function ($query) use ($patientId) {
+                $query->where('patient_id', $patientId);
             })->latest()->get(),
         ]);
     }

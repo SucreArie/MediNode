@@ -20,6 +20,6 @@ class Prescriptions extends Model
     ];
     public function consultation()
 {
-    return $this->belongsTo(Consultations::class);
+    return $this->belongsTo(Consultations::class, 'consultation_id');
 }
 }

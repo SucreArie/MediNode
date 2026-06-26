@@ -23,9 +23,9 @@ class Consultations extends Model
     ];
 
     public function patient()
-{
-    return $this->belongsTo(User::class, 'patient_id');
-}
+    {
+        return $this->belongsTo(Patient::class, 'patient_id');
+    }
 
 public function medecin()
 {
@@ -38,11 +38,11 @@ public function centreMedical()
 }
 public function prescriptions()
 {
-    return $this->hasMany(Prescriptions::class);
+    return $this->hasMany(Prescriptions::class, 'consultation_id');
 }
 
 public function examens()
 {
-    return $this->hasMany(Examens::class);
+    return $this->hasMany(Examens::class, 'consultation_id');
 }
 }

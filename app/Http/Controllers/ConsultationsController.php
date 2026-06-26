@@ -2,45 +2,69 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Consultations; // Vérifiez si votre fichier est Consultation.php
+use App\Models\Consultations; 
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
-use App\Models\Centre_medicaux; // Ajout de l'import pour le modèle Centre_medicaux
+use App\Models\Centre_medicaux;
+use Illuminate\Support\Facades\Log;
+use App\Models\Patient;
 
 class ConsultationsController extends Controller
 {
     /**
      * Liste des consultations
      */
-    public function index()
+    public function index(Request $request)
     {
-        $consultations = Consultations::with(['patient', 'medecin', 'centreMedical'])->get();
+        try {
+            $query = Consultations::with(['patient', 'medecin', 'centreMedical', 'prescriptions', 'examens']);
 
-        return response()->json($consultations);
+            if ($request->has('patient_id')) {
+                $query->where('patient_id', $request->patient_id);
+            }
+
+            $consultations = $query->get();
+            Log::info('Consultations chargées avec succès', ['count' => $consultations->count()]);
+
+            return response()->json($consultations);
+        } catch (\Exception $e) {
+            Log::error('Erreur dans Consultations@index', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'message' => 'Erreur serveur lors du chargement des consultations',
+                'debug' => $e->getMessage()
+            ], 500);
+        }
     }
 
-    /**
-     * Récupérer la liste des patients pour le formulaire
-     */
     public function getPatients()
     {
-        $patients = User::where('role', 'patient')
-                        ->get();
-
-        return response()->json($patients);
+        try {
+            $patients = \App\Models\Patient::select('id', 'firstName', 'lastName', 'name', 'date_naissance', 'gender')
+                            ->get();
+            Log::info('Patients chargés', ['count' => $patients->count()]);
+            return response()->json($patients);
+        } catch (\Exception $e) {
+            Log::error('Erreur getPatients', ['message' => $e->getMessage()]);
+            return response()->json(['message' => 'Erreur chargement patients'], 500);
+        }
     }
 
-    /**
-     * Récupérer la liste des médecins pour le formulaire
-     */
     public function getDoctors()
     {
-        $doctors = User::where('role', 'doctor')
-                       ->select('id', 'name', 'email')
-                       ->get();
-
-        return response()->json($doctors);
+        try {
+            $doctors = User::where('role', 'doctor')
+                           ->select('id', 'name', 'email')
+                           ->get();
+            Log::info('Doctors chargés', ['count' => $doctors->count()]);
+            return response()->json($doctors);
+        } catch (\Exception $e) {
+            Log::error('Erreur getDoctors', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return response()->json(['message' => 'Erreur chargement médecins'], 500);
+        }
     }
     public function getCentresMedicaux()
     {
@@ -56,7 +80,7 @@ class ConsultationsController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'patient_id'    => 'required|exists:users,id',
+            'patient_id'    => 'required|exists:patients,id',
             'medecin_id'    => 'required|exists:users,id',
             'centre_medical_id' => 'required|exists:centre_medicauxes,id',
             'date'          => 'required|date',
@@ -81,6 +105,28 @@ class ConsultationsController extends Controller
             'message' => 'Consultation créée avec succès',
             'data' => $consultation->load(['patient', 'medecin', 'centreMedical'])
         ], 201);
+    }
+
+    /**
+     * Détails d'une consultation
+     */
+    public function show(Consultations $consultation)
+    {
+        try {
+            // Chargement des relations au pluriel pour correspondre aux méthodes définies dans le modèle Consultations
+            $data = $consultation->load(['patient', 'medecin', 'centreMedical', 'prescriptions', 'examens']);
+            return response()->json($data);
+        } catch (\Exception $e) {
+            // Log de l'erreur réelle dans storage/logs/laravel.log
+            Log::error("Erreur lors de la récupération de la consultation #{$consultation->id}: " . $e->getMessage(), [
+                'exception' => $e
+            ]);
+
+            return response()->json([
+                'message' => 'Erreur lors du chargement des relations de la consultation.',
+                'debug' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**

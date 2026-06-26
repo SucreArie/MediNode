@@ -7,6 +7,7 @@ use App\Http\Controllers\PrescriptionsController;
 use App\Http\Controllers\ExamensController;
 use App\Http\Controllers\DossierController;
 use App\Http\Controllers\SyncLogsController;
+use App\Http\Controllers\PatientController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -49,12 +50,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Consultations, Prescriptions, Examens - Admin, Doctor, Receptionist
     Route::middleware('role:admin,doctor,receptionist')->group(function () {
-        Route::apiResource('consultations', ConsultationsController::class)->only(['index', 'store']);
+        Route::apiResource('consultations', ConsultationsController::class)->only(['index', 'store', 'show']);
 
         // Gestion des patients accessible par le personnel
         Route::get('/patients', [AuthController::class, 'index']);
         Route::post('/patients', [AuthController::class, 'store']);
-        Route::get('/patients/{user}', [AuthController::class, 'show']);
+        // Route::get('/patients/{user}', [AuthController::class, 'show']);
         Route::put('/patients/{user}', [AuthController::class, 'updateUser']);
 
         Route::get('/doctors', [ConsultationsController::class, 'getDoctors']);
@@ -79,11 +80,17 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // Patient routes (own data)
-    Route::middleware('role:patient')->prefix('patient')->group(function () {
+    Route::middleware('role:patient,doctor,admin')->prefix('patient')->group(function () {
         Route::get('/me', function (\Illuminate\Http\Request $request) { return response()->json(['message' => 'Profil patient', 'user' => $request->user()]); });
         Route::get('/my-records', function (\Illuminate\Http\Request $request) { return response()->json(['message' => 'Mes dossiers', 'user' => $request->user()]); });
         Route::get('/medical-history', [DossierController::class, 'getPatientHistory']);
     });
-
+    Route::prefix('patients')->group(function () {
+        Route::get('/', [PatientController::class, 'index']);      
+        Route::post('/', [PatientController::class, 'store']);     
+        Route::get('/{id}', [PatientController::class, 'show']);   
+        Route::put('/{id}', [PatientController::class, 'update']); 
+        Route::delete('/{id}', [PatientController::class, 'destroy']); 
+    });
 
 });
